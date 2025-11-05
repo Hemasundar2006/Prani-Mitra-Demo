@@ -1,6 +1,6 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { GoogleGenAI, LiveSession, LiveServerMessage, Modality } from '@google/genai';
+// fix: Remove `LiveSession` from import as it is not an exported member.
+import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import type { TranscriptEntry } from './IVRFlow';
 // fix: Removed unused StopCircleIcon import.
 import { MicIcon, PhoneHangupIcon } from './Icons';
@@ -8,7 +8,13 @@ import { encode, decode, decodeAudioData } from '../utils/audioUtils';
 
 type CallStatus = 'idle' | 'connecting' | 'active' | 'ending';
 
-const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void }> = ({ onCallEnd }) => {
+// fix: Define a minimal `LiveSession` interface locally for type safety, as it's not exported from the SDK.
+interface LiveSession {
+  sendRealtimeInput(input: { media: { data: string; mimeType: string; } }): void;
+  close(): void;
+}
+
+const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void, language: string }> = ({ onCallEnd, language }) => {
   const [status, setStatus] = useState<CallStatus>('connecting');
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [currentTranscription, setCurrentTranscription] = useState({ user: '', ai: '' });
@@ -72,7 +78,7 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void }
             config: {
                 responseModalities: [Modality.AUDIO],
                 speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
-                systemInstruction: 'You are Prani Mitra, a friendly and helpful AI assistant for Indian farmers. Speak in a clear, simple, and supportive tone. Keep your answers concise and actionable. Your goal is to provide practical advice on farming practices, crop diseases, weather, and government schemes.',
+                systemInstruction: `You are Prani Mitra, a friendly and helpful AI assistant for Indian farmers. Speak in a clear, simple, and supportive tone. You must respond ONLY in ${language}. Keep your answers concise and actionable. Your expertise is strictly limited to farming and animal healthcare. If a user asks a question outside of these topics, you must politely decline to answer and remind them that you are a farming assistant. Your goal is to provide practical advice on farming practices, crop diseases, animal health, weather, and government schemes relevant to agriculture.`,
                 inputAudioTranscription: {},
                 outputAudioTranscription: {},
             },
@@ -159,7 +165,7 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void }
         setStatus('idle');
         alert('Could not access microphone. Please allow microphone permissions and try again.');
     }
-  }, [stopAudioProcessing]);
+  }, [stopAudioProcessing, language]);
 
   useEffect(() => {
     startCall();

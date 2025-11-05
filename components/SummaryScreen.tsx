@@ -2,10 +2,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { TranscriptEntry } from './IVRFlow';
 import { GoogleGenAI, Modality } from '@google/genai';
-import { SpeakerWaveIcon, ArrowPathIcon } from './Icons';
+import { SpeakerWaveIcon, ArrowPathIcon, ShareIcon } from './Icons';
 import { decode, decodeAudioData } from '../utils/audioUtils';
 
-const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => void }> = ({ transcript, onRestart }) => {
+const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => void, language: string }> = ({ transcript, onRestart, language }) => {
   const [summary, setSummary] = useState('');
   const [isLoadingSummary, setIsLoadingSummary] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -22,7 +22,7 @@ const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => 
     }
 
     const conversationText = transcript.map(t => `${t.speaker === 'user' ? 'Farmer' : 'Assistant'}: ${t.text}`).join('\n');
-    const prompt = `Based on the following conversation with a farmer, please provide a concise summary of the key points and advice given. Format it as a simple, easy-to-read text message that could be sent via SMS.\n\nConversation:\n${conversationText}\n\nSummary:`;
+    const prompt = `Based on the following conversation with a farmer, please provide a concise summary of the key points and advice given. The summary must be written in ${language}. Format it as a simple, easy-to-read text message that could be sent via SMS.\n\nConversation:\n${conversationText}\n\nSummary:`;
 
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
@@ -37,7 +37,7 @@ const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => 
     } finally {
       setIsLoadingSummary(false);
     }
-  }, [transcript]);
+  }, [transcript, language]);
 
   useEffect(() => {
     generateSummary();
@@ -47,11 +47,20 @@ const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => 
     if (isSpeaking || !summary) return;
 
     setIsSpeaking(true);
+
+    const ttsPrompts: { [key: string]: string } = {
+        'English': `Here is the summary of your call: ${summary}`,
+        'Hindi': `आपके कॉल का सारांश यहाँ है: ${summary}`,
+        'Telugu': `మీ కాల్ సారాంశం ఇక్కడ ఉంది: ${summary}`,
+    };
+    
+    const ttsPrompt = ttsPrompts[language] || ttsPrompts['English'];
+
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: `Here is the summary of your call: ${summary}` }] }],
+        contents: [{ parts: [{ text: ttsPrompt }] }],
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
@@ -79,6 +88,14 @@ const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => 
     }
   };
 
+  const handleShareSms = () => {
+    if (!summary) return;
+    const encodedSummary = encodeURIComponent(summary);
+    // Use the sms: URI scheme to open the default messaging app.
+    const smsLink = `sms:?body=${encodedSummary}`;
+    window.location.href = smsLink;
+  };
+
   return (
     <div className="flex flex-col items-center justify-center text-center h-full">
       <h2 className="text-2xl font-bold text-green-800 mb-2">Call Summary</h2>
@@ -94,7 +111,7 @@ const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => 
         )}
       </div>
 
-      <div className="flex space-x-4">
+      <div className="flex flex-wrap justify-center gap-4">
         <button
           onClick={handleReadAloud}
           disabled={isSpeaking || isLoadingSummary || !summary}
@@ -102,6 +119,14 @@ const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => 
         >
           <SpeakerWaveIcon className="w-5 h-5 mr-2" />
           {isSpeaking ? 'Speaking...' : 'Read Aloud'}
+        </button>
+        <button
+          onClick={handleShareSms}
+          disabled={isLoadingSummary || !summary}
+          className="bg-green-500 text-white font-bold py-3 px-6 rounded-full shadow-lg hover:bg-green-600 transition-colors flex items-center disabled:bg-green-300"
+        >
+          <ShareIcon className="w-5 h-5 mr-2" />
+          Share SMS
         </button>
         <button
           onClick={onRestart}
