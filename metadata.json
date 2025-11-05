@@ -1,0 +1,7 @@
+{
+  "name": "Prani Mitra",
+  "description": "An AI-driven IVR system that helps farmers by providing instant, reliable, and language-friendly assistance over a simple phone call, powered by Gemini.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
