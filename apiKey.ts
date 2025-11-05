@@ -1,6 +1,6 @@
 // The API key is now hardcoded for convenience during development.
 // In a production environment, this should be handled securely (e.g., via environment variables).
-const API_KEY = '';
+const API_KEY = 'API_KEY';
 
 /**
  * Returns the configured Google AI API Key.
