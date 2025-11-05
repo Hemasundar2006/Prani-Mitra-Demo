@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, Chat } from '@google/genai';
 import { PaperAirplaneIcon } from './Icons';
+import { getApiKey } from '../apiKey';
 
 interface ChatMessage {
   role: 'user' | 'model';
@@ -44,7 +45,7 @@ const ChatFlow: React.FC = () => {
         'Telugu': 'మీరు ప్రాణి మిత్ర, భారతీయ రైతులకు సహాయపడే ఒక AI సహాయకుడు. మీ నైపుణ్యం వ్యవసాయం మరియు పశు ఆరోగ్య సంరక్షణ అంశాలకు మాత్రమే పరిమితం. మీరు కేవలం తెలుగులో మాత్రమే సమాధానం ఇవ్వాలి. ప్రశ్నలకు స్పష్టంగా మరియు సంక్షిప్తంగా సమాధానం ఇవ్వండి. ఇతర ఏ విషయం గురించి అయినా అడిగితే, మీరు వినయంగా తిరస్కరించాలి మరియు మీరు కేవలం వ్యవసాయం మరియు పశు ఆరోగ్య సంబంధిత ప్రశ్నలతో మాత్రమే సహాయపడగలరని చెప్పాలి.',
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+    const ai = new GoogleGenAI({ apiKey: getApiKey() });
     const chatSession = ai.chats.create({
       model: 'gemini-2.5-flash',
       config: {
