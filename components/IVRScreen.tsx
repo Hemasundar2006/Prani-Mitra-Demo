@@ -15,7 +15,7 @@ interface LiveSession {
   close(): void;
 }
 
-const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void, language: string }> = ({ onCallEnd, language }) => {
+const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void, language: string, onStartupError: () => void }> = ({ onCallEnd, language, onStartupError }) => {
   const [status, setStatus] = useState<CallStatus>('connecting');
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [currentTranscription, setCurrentTranscription] = useState({ user: '', ai: '' });
@@ -65,6 +65,7 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void, 
     setCurrentTranscription({ user: '', ai: '' });
     
     try {
+        const apiKey = getApiKey();
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         // fix: Add `(window as any)` to handle vendor-prefixed `webkitAudioContext` for Safari compatibility.
         inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
@@ -72,7 +73,7 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void, 
         outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
         nextStartTimeRef.current = 0;
         
-        const ai = new GoogleGenAI({ apiKey: getApiKey() });
+        const ai = new GoogleGenAI({ apiKey });
         
         sessionPromiseRef.current = ai.live.connect({
             model: 'gemini-2.5-flash-native-audio-preview-09-2025',
@@ -164,9 +165,14 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void, 
     } catch (error) {
         console.error('Failed to start call:', error);
         setStatus('idle');
-        alert('Could not access microphone. Please allow microphone permissions and try again.');
+        if (error instanceof Error && error.name === 'NotAllowedError') {
+             alert('Could not access microphone. Please allow microphone permissions and try again.');
+        } else {
+            alert(`An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`);
+        }
+        onStartupError();
     }
-  }, [stopAudioProcessing, language]);
+  }, [stopAudioProcessing, language, onStartupError]);
 
   useEffect(() => {
     startCall();

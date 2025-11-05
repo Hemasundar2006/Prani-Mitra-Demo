@@ -1,13 +1,15 @@
+// The API key is now hardcoded for convenience during development.
+// In a production environment, this should be handled securely (e.g., via environment variables).
+const API_KEY = 'AIzaSyCYJnZf1lcUInyU6Qx9URjIYaccOvKa2aM';
 
-let apiKey: string | undefined = undefined;
-
+/**
+ * Returns the configured Google AI API Key.
+ * @returns The API key string.
+ */
 export function getApiKey(): string {
-  if (!apiKey) {
-    apiKey = window.prompt("Please enter your Google AI API Key:");
-    if (!apiKey) {
-        alert("API Key is required to run this application. Please reload and enter your key.");
-        throw new Error("API Key not provided.");
-    }
+  if (!API_KEY) {
+    // This will help diagnose if the key was accidentally removed.
+    throw new Error("API Key is not configured in apiKey.ts");
   }
-  return apiKey;
+  return API_KEY;
 }

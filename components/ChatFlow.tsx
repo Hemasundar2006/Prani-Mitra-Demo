@@ -1,13 +1,14 @@
-
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, Chat } from '@google/genai';
-import { PaperAirplaneIcon } from './Icons';
+import { PaperAirplaneIcon, ArrowPathIcon } from './Icons';
 import { getApiKey } from '../apiKey';
 
 interface ChatMessage {
   role: 'user' | 'model';
   text: string;
 }
+
+type InitializationState = 'initializing' | 'ready' | 'error';
 
 const LanguageSelection: React.FC<{ onSelect: (lang: string) => void }> = ({ onSelect }) => (
     <div className="text-center flex flex-col items-center justify-center h-full">
@@ -24,14 +25,18 @@ const LanguageSelection: React.FC<{ onSelect: (lang: string) => void }> = ({ onS
 
 const ChatFlow: React.FC = () => {
   const [language, setLanguage] = useState<string | null>(null);
+  const [initState, setInitState] = useState<InitializationState>('initializing');
   const [chat, setChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  const initializeChat = useCallback(async () => {
     if (!language) return;
+    setInitState('initializing');
+    setChat(null);
+    setMessages([]);
 
     const welcomeMessages: { [key: string]: string } = {
         'English': 'Hello! How can I help you with your farming questions today?',
@@ -45,16 +50,29 @@ const ChatFlow: React.FC = () => {
         'Telugu': 'మీరు ప్రాణి మిత్ర, భారతీయ రైతులకు సహాయపడే ఒక AI సహాయకుడు. మీ నైపుణ్యం వ్యవసాయం మరియు పశు ఆరోగ్య సంరక్షణ అంశాలకు మాత్రమే పరిమితం. మీరు కేవలం తెలుగులో మాత్రమే సమాధానం ఇవ్వాలి. ప్రశ్నలకు స్పష్టంగా మరియు సంక్షిప్తంగా సమాధానం ఇవ్వండి. ఇతర ఏ విషయం గురించి అయినా అడిగితే, మీరు వినయంగా తిరస్కరించాలి మరియు మీరు కేవలం వ్యవసాయం మరియు పశు ఆరోగ్య సంబంధిత ప్రశ్నలతో మాత్రమే సహాయపడగలరని చెప్పాలి.',
     }
 
-    const ai = new GoogleGenAI({ apiKey: getApiKey() });
-    const chatSession = ai.chats.create({
-      model: 'gemini-2.5-flash',
-      config: {
-        systemInstruction: systemInstructions[language] || systemInstructions['English']
-      }
-    });
-    setChat(chatSession);
-    setMessages([{ role: 'model', text: welcomeMessages[language] || welcomeMessages['English'] }]);
+    try {
+      const apiKey = getApiKey();
+      const ai = new GoogleGenAI({ apiKey });
+      const chatSession = ai.chats.create({
+        model: 'gemini-2.5-flash',
+        config: {
+          systemInstruction: systemInstructions[language] || systemInstructions['English']
+        }
+      });
+      setChat(chatSession);
+      setMessages([{ role: 'model', text: welcomeMessages[language] || welcomeMessages['English'] }]);
+      setInitState('ready');
+    } catch (error) {
+      console.error('Failed to initialize chat:', error);
+      setInitState('error');
+    }
   }, [language]);
+
+  useEffect(() => {
+    if (language) {
+      initializeChat();
+    }
+  }, [language, initializeChat]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -85,6 +103,36 @@ const ChatFlow: React.FC = () => {
 
   if (!language) {
     return <LanguageSelection onSelect={setLanguage} />;
+  }
+  
+  if (initState === 'initializing') {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <ArrowPathIcon className="w-8 h-8 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  if (initState === 'error') {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center p-4">
+          <p className="text-red-600 mb-4">
+            Failed to initialize chat. This might be due to an invalid API key or a network issue.
+          </p>
+          <button
+              onClick={initializeChat}
+              className="bg-green-600 text-white font-bold py-2 px-6 rounded-full shadow-lg hover:bg-green-700"
+          >
+              Retry
+          </button>
+           <button
+              onClick={() => setLanguage(null)}
+              className="mt-4 text-sm text-gray-500 hover:underline"
+          >
+              Change Language
+          </button>
+      </div>
+    );
   }
 
   return (
@@ -119,11 +167,11 @@ const ChatFlow: React.FC = () => {
             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
             placeholder="Ask a question..."
             className="flex-grow border border-gray-300 rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-500"
-            disabled={isLoading}
+            disabled={isLoading || initState !== 'ready'}
           />
           <button
             onClick={handleSend}
-            disabled={isLoading || !input.trim()}
+            disabled={isLoading || !input.trim() || initState !== 'ready'}
             className="bg-green-600 text-white p-3 rounded-full hover:bg-green-700 disabled:bg-green-300 transition-colors"
           >
             <PaperAirplaneIcon className="w-5 h-5" />

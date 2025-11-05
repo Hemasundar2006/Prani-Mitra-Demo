@@ -54,13 +54,17 @@ const IVRFlow: React.FC = () => {
       setStep('language');
   };
 
+  const handleStartupError = () => {
+    setStep('welcome');
+  };
+
   switch (step) {
     case 'language':
         return <LanguageSelectionScreen onSelect={handleLanguageSelect} />;
     case 'welcome':
       return <WelcomeScreen onStart={() => setStep('ivr')} language={language} />;
     case 'ivr':
-      return <IVRScreen onCallEnd={handleCallEnd} language={language} />;
+      return <IVRScreen onCallEnd={handleCallEnd} language={language} onStartupError={handleStartupError} />;
     case 'summary':
       return <SummaryScreen transcript={transcript} onRestart={handleRestart} language={language} />;
     default:
