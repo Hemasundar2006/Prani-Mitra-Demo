@@ -6,7 +6,7 @@ import { SpeakerWaveIcon, ArrowPathIcon, ShareIcon, DownloadIcon } from './Icons
 import { decode, decodeAudioData } from '../utils/audioUtils';
 
 const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => void, language: string, recordingUrl: string | null }> = ({ transcript, onRestart, language, recordingUrl }) => {
-  const [summary, setSummary] = = useState('');
+  const [summary, setSummary] = useState('');
   const [isLoadingSummary, setIsLoadingSummary] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   
