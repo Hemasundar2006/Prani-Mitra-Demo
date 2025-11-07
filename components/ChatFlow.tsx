@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, Chat } from '@google/genai';
 import { PaperAirplaneIcon, ArrowPathIcon } from './Icons';
-import { getApiKey } from '../apiKey';
 
 interface ChatMessage {
   role: 'user' | 'model';
@@ -30,11 +29,13 @@ const ChatFlow: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const initializeChat = useCallback(async () => {
     if (!language) return;
     setInitState('initializing');
+    setError(null);
     setChat(null);
     setMessages([]);
 
@@ -51,8 +52,7 @@ const ChatFlow: React.FC = () => {
     }
 
     try {
-      const apiKey = getApiKey();
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const chatSession = ai.chats.create({
         model: 'gemini-2.5-flash',
         config: {
@@ -62,8 +62,10 @@ const ChatFlow: React.FC = () => {
       setChat(chatSession);
       setMessages([{ role: 'model', text: welcomeMessages[language] || welcomeMessages['English'] }]);
       setInitState('ready');
-    } catch (error) {
-      console.error('Failed to initialize chat:', error);
+    } catch (e) {
+      console.error('Failed to initialize chat:', e);
+      const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
+      setError(`Failed to initialize chat. This might be due to an invalid API key or a network issue. Error: ${errorMessage}`);
       setInitState('error');
     }
   }, [language]);
@@ -117,7 +119,7 @@ const ChatFlow: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center p-4">
           <p className="text-red-600 mb-4">
-            Failed to initialize chat. This might be due to an invalid API key or a network issue.
+            {error || 'Failed to initialize chat. Please try again.'}
           </p>
           <button
               onClick={initializeChat}

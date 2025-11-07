@@ -3,7 +3,6 @@ import type { TranscriptEntry } from './IVRFlow';
 import { GoogleGenAI, Modality } from '@google/genai';
 import { SpeakerWaveIcon, ArrowPathIcon, ShareIcon } from './Icons';
 import { decode, decodeAudioData } from '../utils/audioUtils';
-import { getApiKey } from '../apiKey';
 
 const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => void, language: string }> = ({ transcript, onRestart, language }) => {
   const [summary, setSummary] = useState('');
@@ -25,8 +24,7 @@ const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => 
     const prompt = `Based on the following conversation with a farmer, please provide a concise summary of the key points and advice given. The summary must be written in ${language}. Format it as a simple, easy-to-read text message that could be sent via SMS.\n\nConversation:\n${conversationText}\n\nSummary:`;
 
     try {
-      const apiKey = getApiKey();
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt
@@ -58,8 +56,7 @@ const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => 
     const ttsPrompt = ttsPrompts[language] || ttsPrompts['English'];
 
     try {
-      const apiKey = getApiKey();
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
         contents: [{ parts: [{ text: ttsPrompt }] }],

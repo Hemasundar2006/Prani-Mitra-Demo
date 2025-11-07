@@ -5,7 +5,6 @@ import type { TranscriptEntry } from './IVRFlow';
 // fix: Removed unused StopCircleIcon import.
 import { MicIcon, PhoneHangupIcon } from './Icons';
 import { encode, decode, decodeAudioData } from '../utils/audioUtils';
-import { getApiKey } from '../apiKey';
 
 type CallStatus = 'idle' | 'connecting' | 'active' | 'ending';
 
@@ -65,7 +64,6 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void, 
     setCurrentTranscription({ user: '', ai: '' });
     
     try {
-        const apiKey = getApiKey();
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         // fix: Add `(window as any)` to handle vendor-prefixed `webkitAudioContext` for Safari compatibility.
         inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
@@ -73,7 +71,7 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void, 
         outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
         nextStartTimeRef.current = 0;
         
-        const ai = new GoogleGenAI({ apiKey });
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         
         sessionPromiseRef.current = ai.live.connect({
             model: 'gemini-2.5-flash-native-audio-preview-09-2025',
