@@ -28,6 +28,7 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
   const audioSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const recordingSourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const mergedStreamDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
@@ -40,6 +41,10 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
     if (mediaStreamSourceRef.current) {
         mediaStreamSourceRef.current.disconnect();
         mediaStreamSourceRef.current = null;
+    }
+    if (recordingSourceNodeRef.current) {
+        recordingSourceNodeRef.current.disconnect();
+        recordingSourceNodeRef.current = null;
     }
     if (inputAudioContextRef.current && inputAudioContextRef.current.state !== 'closed') {
       inputAudioContextRef.current.close().catch(console.error);
@@ -103,10 +108,16 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
             callbacks: {
                 onopen: () => {
                     setStatus('active');
-                    const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
-                    mediaStreamSourceRef.current = source;
-                    // Route user's mic to the merged stream for recording
-                    source.connect(mergedStreamDestRef.current!);
+                    
+                    // Create two separate source nodes from the same stream for each audio context.
+                    const inputSourceNode = inputAudioContextRef.current!.createMediaStreamSource(stream);
+                    const recordingSourceNode = outputAudioContextRef.current!.createMediaStreamSource(stream);
+                    
+                    mediaStreamSourceRef.current = inputSourceNode;
+                    recordingSourceNodeRef.current = recordingSourceNode;
+
+                    // Route user's mic (from the output context) to the merged stream for recording.
+                    recordingSourceNode.connect(mergedStreamDestRef.current!);
 
                     const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(4096, 1, 1);
                     scriptProcessorRef.current = scriptProcessor;
@@ -124,10 +135,10 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
                             session.sendRealtimeInput({ media: pcmBlob });
                         });
                     };
-                    source.connect(scriptProcessor);
+                    inputSourceNode.connect(scriptProcessor);
                     scriptProcessor.connect(inputAudioContextRef.current!.destination);
                     
-                    // Start recording
+                    // Start recording from the destination stream
                     mediaRecorderRef.current = new MediaRecorder(mergedStreamDestRef.current!.stream);
                     audioChunksRef.current = [];
                     mediaRecorderRef.current.ondataavailable = (event) => {
