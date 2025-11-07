@@ -1,16 +1,26 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import type { TranscriptEntry } from './IVRFlow';
 import { GoogleGenAI, Modality } from '@google/genai';
-import { SpeakerWaveIcon, ArrowPathIcon, ShareIcon } from './Icons';
+import { SpeakerWaveIcon, ArrowPathIcon, ShareIcon, DownloadIcon } from './Icons';
 import { decode, decodeAudioData } from '../utils/audioUtils';
 
-const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => void, language: string }> = ({ transcript, onRestart, language }) => {
-  const [summary, setSummary] = useState('');
+const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => void, language: string, recordingUrl: string | null }> = ({ transcript, onRestart, language, recordingUrl }) => {
+  const [summary, setSummary] = = useState('');
   const [isLoadingSummary, setIsLoadingSummary] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   
   const audioContextRef = React.useRef<AudioContext | null>(null);
   const audioSourceRef = React.useRef<AudioBufferSourceNode | null>(null);
+
+  // Clean up the object URL to avoid memory leaks
+  useEffect(() => {
+    return () => {
+      if (recordingUrl) {
+        URL.revokeObjectURL(recordingUrl);
+      }
+    };
+  }, [recordingUrl]);
 
   const generateSummary = useCallback(async () => {
     setIsLoadingSummary(true);
@@ -96,17 +106,35 @@ const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => 
   };
 
   return (
-    <div className="flex flex-col items-center justify-center text-center h-full">
+    <div className="flex flex-col items-center text-center h-full p-4">
       <h2 className="text-2xl font-bold text-green-800 mb-2">Call Summary</h2>
-      <p className="text-gray-600 mb-6">Here's a summary of your conversation, like an SMS.</p>
       
-      <div className="w-full max-w-md p-6 bg-yellow-50 border border-yellow-200 rounded-lg text-left mb-6 min-h-[150px]">
+      {recordingUrl && (
+        <div className="w-full max-w-md mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <p className="text-gray-700 font-semibold mb-2 text-sm text-left">Call Recording</p>
+            <div className="flex items-center space-x-2">
+                <audio controls src={recordingUrl} className="w-full"></audio>
+                <a
+                    href={recordingUrl}
+                    download="prani-mitra-recording.webm"
+                    title="Download Recording"
+                    className="flex-shrink-0 bg-gray-600 text-white p-3 rounded-full shadow-lg hover:bg-gray-700 transition-colors"
+                >
+                    <DownloadIcon className="w-5 h-5" />
+                </a>
+            </div>
+        </div>
+      )}
+
+      <p className="text-gray-600 mb-4">Here's a summary of your conversation, like an SMS.</p>
+      
+      <div className="w-full max-w-md p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-left mb-6 min-h-[100px]">
         {isLoadingSummary ? (
           <div className="flex items-center justify-center h-full">
              <ArrowPathIcon className="w-6 h-6 animate-spin text-gray-500" />
           </div>
         ) : (
-          <p className="text-gray-800 whitespace-pre-wrap">{summary}</p>
+          <p className="text-gray-800 whitespace-pre-wrap text-sm">{summary}</p>
         )}
       </div>
 

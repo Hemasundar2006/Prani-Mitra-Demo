@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 // fix: Remove `LiveSession` from import as it is not an exported member.
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
@@ -15,7 +16,7 @@ interface LiveSession {
   close(): void;
 }
 
-const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void, language: string, onStartupError: () => void }> = ({ onCallEnd, language, onStartupError }) => {
+const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recordingUrl: string | null) => void, language: string, onStartupError: () => void }> = ({ onCallEnd, language, onStartupError }) => {
   const [status, setStatus] = useState<CallStatus>('connecting');
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [currentTranscription, setCurrentTranscription] = useState({ user: '', ai: '' });
@@ -27,6 +28,9 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void, 
   const audioSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const mergedStreamDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
 
   const stopAudioProcessing = useCallback(() => {
     if (scriptProcessorRef.current) {
@@ -53,8 +57,18 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void, 
       sessionPromiseRef.current?.then(session => {
         session.close();
       }).catch(e => console.error("Error closing session:", e));
+
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.onstop = () => {
+            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            onCallEnd(transcript, audioUrl);
+        };
+        mediaRecorderRef.current.stop();
+      } else {
+        onCallEnd(transcript, null);
+      }
       stopAudioProcessing();
-      onCallEnd(transcript);
     }
   }, [status, transcript, onCallEnd, stopAudioProcessing]);
 
@@ -70,6 +84,7 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void, 
         inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
         // fix: Add `(window as any)` to handle vendor-prefixed `webkitAudioContext` for Safari compatibility.
         outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        mergedStreamDestRef.current = outputAudioContextRef.current.createMediaStreamDestination();
         nextStartTimeRef.current = 0;
         
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -90,6 +105,9 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void, 
                     setStatus('active');
                     const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
                     mediaStreamSourceRef.current = source;
+                    // Route user's mic to the merged stream for recording
+                    source.connect(mergedStreamDestRef.current!);
+
                     const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(4096, 1, 1);
                     scriptProcessorRef.current = scriptProcessor;
                     
@@ -108,6 +126,16 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void, 
                     };
                     source.connect(scriptProcessor);
                     scriptProcessor.connect(inputAudioContextRef.current!.destination);
+                    
+                    // Start recording
+                    mediaRecorderRef.current = new MediaRecorder(mergedStreamDestRef.current!.stream);
+                    audioChunksRef.current = [];
+                    mediaRecorderRef.current.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            audioChunksRef.current.push(event.data);
+                        }
+                    };
+                    mediaRecorderRef.current.start();
                 },
                 onmessage: async (message: LiveServerMessage) => {
                     let tempUser = '';
@@ -140,15 +168,23 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void, 
                         const audioContext = outputAudioContextRef.current!;
                         nextStartTimeRef.current = Math.max(nextStartTimeRef.current, audioContext.currentTime);
                         const audioBuffer = await decodeAudioData(decode(base64Audio), audioContext, 24000, 1);
-                        const source = audioContext.createBufferSource();
-                        source.buffer = audioBuffer;
-                        source.connect(audioContext.destination);
-                        source.addEventListener('ended', () => {
-                            audioSourcesRef.current.delete(source);
+                        const sourceNode = audioContext.createBufferSource();
+                        sourceNode.buffer = audioBuffer;
+                        
+                        // Connect to speakers for playback
+                        sourceNode.connect(audioContext.destination);
+
+                        // Also connect to the recording stream
+                        if (mergedStreamDestRef.current) {
+                           sourceNode.connect(mergedStreamDestRef.current);
+                        }
+
+                        sourceNode.addEventListener('ended', () => {
+                            audioSourcesRef.current.delete(sourceNode);
                         });
-                        source.start(nextStartTimeRef.current);
+                        sourceNode.start(nextStartTimeRef.current);
                         nextStartTimeRef.current += audioBuffer.duration;
-                        audioSourcesRef.current.add(source);
+                        audioSourcesRef.current.add(sourceNode);
                     }
                 },
                 onerror: (e: ErrorEvent) => {

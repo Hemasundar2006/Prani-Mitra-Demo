@@ -38,19 +38,22 @@ const IVRFlow: React.FC = () => {
   const [step, setStep] = useState<'language' | 'welcome' | 'ivr' | 'summary'>('language');
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [language, setLanguage] = useState<string>('English');
+  const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
 
   const handleLanguageSelect = (lang: string) => {
     setLanguage(lang);
     setStep('welcome');
   };
 
-  const handleCallEnd = (finalTranscript: TranscriptEntry[]) => {
+  const handleCallEnd = (finalTranscript: TranscriptEntry[], url: string | null) => {
     setTranscript(finalTranscript);
+    setRecordingUrl(url);
     setStep('summary');
   };
 
   const handleRestart = () => {
       setTranscript([]);
+      setRecordingUrl(null);
       setStep('language');
   };
 
@@ -66,7 +69,7 @@ const IVRFlow: React.FC = () => {
     case 'ivr':
       return <IVRScreen onCallEnd={handleCallEnd} language={language} onStartupError={handleStartupError} />;
     case 'summary':
-      return <SummaryScreen transcript={transcript} onRestart={handleRestart} language={language} />;
+      return <SummaryScreen transcript={transcript} onRestart={handleRestart} language={language} recordingUrl={recordingUrl} />;
     default:
       return <LanguageSelectionScreen onSelect={handleLanguageSelect} />;
   }
