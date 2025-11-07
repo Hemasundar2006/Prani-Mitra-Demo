@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 // fix: Remove `LiveSession` from import as it is not an exported member.
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
@@ -174,7 +173,7 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
                         setCurrentTranscription({ user: '', ai: '' });
                     }
 
-                    const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData.data;
+                    const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
                     if (base64Audio) {
                         const audioContext = outputAudioContextRef.current!;
                         nextStartTimeRef.current = Math.max(nextStartTimeRef.current, audioContext.currentTime);
