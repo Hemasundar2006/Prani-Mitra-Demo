@@ -5,6 +5,7 @@ import type { TranscriptEntry } from './IVRFlow';
 // fix: Removed unused StopCircleIcon import.
 import { MicIcon, PhoneHangupIcon } from './Icons';
 import { encode, decode, decodeAudioData } from '../utils/audioUtils';
+import { knowledgeBase } from '../utils/knowledgeBase';
 
 type CallStatus = 'idle' | 'connecting' | 'active' | 'ending';
 
@@ -72,13 +73,15 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[]) => void, 
         nextStartTimeRef.current = 0;
         
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+        const knowledgeText = knowledgeBase.map(qa => `Q: ${qa.question}\nA: ${qa.answer}`).join('\n\n');
         
         sessionPromiseRef.current = ai.live.connect({
             model: 'gemini-2.5-flash-native-audio-preview-09-2025',
             config: {
                 responseModalities: [Modality.AUDIO],
                 speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
-                systemInstruction: `You are Prani Mitra, a friendly and helpful AI assistant for Indian farmers. Speak in a clear, simple, and supportive tone. You must respond ONLY in ${language}. Keep your answers concise and actionable. Your expertise is strictly limited to farming and animal healthcare. If a user asks a question outside of these topics, you must politely decline to answer and remind them that you are a farming assistant. Your goal is to provide practical advice on farming practices, crop diseases, animal health, weather, and government schemes relevant to agriculture.`,
+                systemInstruction: `You are Prani Mitra, a friendly and helpful AI assistant for Indian farmers. You must respond ONLY in ${language}. Your expertise is strictly limited to farming and animal healthcare. You must answer questions based ONLY on the following information. If the user's question cannot be answered using this information, you must politely say that you don't have information on that topic in ${language}.\n\n---START OF KNOWLEDGE BASE---\n${knowledgeText}\n---END OF KNOWLEDGE BASE---`,
                 inputAudioTranscription: {},
                 outputAudioTranscription: {},
             },
