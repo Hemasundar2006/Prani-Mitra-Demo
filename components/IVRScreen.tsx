@@ -33,6 +33,8 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const mergedStreamDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const retryCountRef = useRef(0);
+  const mountedRef = useRef(true);
 
   const stopAudioProcessing = useCallback(() => {
     if (scriptProcessorRef.current) {
@@ -79,13 +81,20 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
   }, [status, transcript, onCallEnd, stopAudioProcessing]);
 
 
-  const startCall = useCallback(async () => {
+  const startCall = useCallback(async (isRetry = false) => {
+    if (!mountedRef.current) return;
     setStatus('connecting');
-    setTranscript([]);
-    setCurrentTranscription({ user: '', ai: '' });
+    if (!isRetry) {
+        setTranscript([]);
+        setCurrentTranscription({ user: '', ai: '' });
+    }
     
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        // Check if mounted after async operation
+        if (!mountedRef.current) return;
+
         // fix: Add `(window as any)` to handle vendor-prefixed `webkitAudioContext` for Safari compatibility.
         inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
         // fix: Add `(window as any)` to handle vendor-prefixed `webkitAudioContext` for Safari compatibility.
@@ -113,17 +122,26 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
                 break;
         }
 
+        const closingMessages: { [key: string]: string } = {
+            'English': "Thank you for calling Prani Mitra",
+            'Hindi': "प्राणी मित्र को कॉल करने के लिए धन्यवाद",
+            'Telugu': "ప్రాణి మిత్రకు కాల్ చేసినందుకు ధన్యవాదాలు"
+        };
+        const closingMessage = closingMessages[language] || closingMessages['English'];
+
         const systemInstruction = `You are Prani Mitra, a friendly and helpful AI assistant for Indian farmers. You must respond ONLY in ${language}.
         
         ${serviceInstruction}
         
         Use the following Knowledge Base to answer questions. If a question is within the selected service domain but the answer is not in the Knowledge Base, you may provide general helpful advice based on standard agricultural practices in India, but prioritize the Knowledge Base.
+
+        When the conversation ends or the user says goodbye, you MUST say EXACTLY: "${closingMessage}". Do not add the service name or any other text to this closing phrase.
         
         ---START OF KNOWLEDGE BASE---
         ${knowledgeText}
         ---END OF KNOWLEDGE BASE---`;
 
-        sessionPromiseRef.current = ai.live.connect({
+        const newSessionPromise = ai.live.connect({
             model: 'gemini-2.5-flash-native-audio-preview-09-2025',
             config: {
                 responseModalities: [Modality.AUDIO],
@@ -134,7 +152,9 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
             },
             callbacks: {
                 onopen: () => {
+                    if (!mountedRef.current) return;
                     setStatus('active');
+                    retryCountRef.current = 0; // Reset retry count on success
                     
                     // Create two separate source nodes from the same stream for each audio context.
                     const inputSourceNode = inputAudioContextRef.current!.createMediaStreamSource(stream);
@@ -176,6 +196,7 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
                     mediaRecorderRef.current.start();
                 },
                 onmessage: async (message: LiveServerMessage) => {
+                    if (!mountedRef.current) return;
                     let tempUser = '';
                     let tempAi = '';
 
@@ -231,31 +252,53 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
                 },
                 onerror: (e: ErrorEvent) => {
                     console.error('Session error:', e);
+                    
+                    // Attempt retry if we encounter a network error during connection phase
+                    if (mountedRef.current && status === 'connecting' && retryCountRef.current < 1) {
+                         console.log("Retrying connection...");
+                         retryCountRef.current += 1;
+                         stopAudioProcessing();
+                         setTimeout(() => {
+                             startCall(true);
+                         }, 1000);
+                         return;
+                    }
+
                     setStatus('idle');
                     stopAudioProcessing();
                 },
                 onclose: (e: CloseEvent) => {
-                   // This is called when the session is closed, either by client or server.
-                   // The endCall function handles the state transition.
                    console.log("Session closed.");
                 },
             },
         });
+        sessionPromiseRef.current = newSessionPromise;
+
     } catch (error) {
         console.error('Failed to start call:', error);
         setStatus('idle');
         if (error instanceof Error && error.name === 'NotAllowedError') {
              alert('Could not access microphone. Please allow microphone permissions and try again.');
         } else {
-            alert(`An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`);
+            // Only alert if we haven't already retried to avoid spamming alerts
+            if (retryCountRef.current >= 1) {
+                 alert(`An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`);
+            } else {
+                 // Silent retry for initial failure
+                 retryCountRef.current += 1;
+                 setTimeout(() => startCall(true), 1000);
+                 return;
+            }
         }
         onStartupError();
     }
-  }, [stopAudioProcessing, language, service, onStartupError]);
+  }, [stopAudioProcessing, language, service, onStartupError, status]);
 
   useEffect(() => {
+    mountedRef.current = true;
     startCall();
     return () => {
+        mountedRef.current = false;
         sessionPromiseRef.current?.then(session => session.close()).catch(console.error);
         stopAudioProcessing();
     };

@@ -13,6 +13,12 @@ const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => 
   const audioContextRef = React.useRef<AudioContext | null>(null);
   const audioSourceRef = React.useRef<AudioBufferSourceNode | null>(null);
 
+  const thankYouMessages: { [key: string]: string } = {
+    'English': 'Thank you for calling Prani Mitra',
+    'Hindi': 'प्राणी मित्र को कॉल करने के लिए धन्यवाद',
+    'Telugu': 'ప్రాణి మిత్రకు కాల్ చేసినందుకు ధన్యవాదాలు',
+  };
+
   // Clean up the object URL to avoid memory leaks
   useEffect(() => {
     return () => {
@@ -57,13 +63,16 @@ const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => 
 
     setIsSpeaking(true);
 
-    const ttsPrompts: { [key: string]: string } = {
-        'English': `Here is the summary of your call: ${summary}`,
-        'Hindi': `आपके कॉल का सारांश यहाँ है: ${summary}`,
-        'Telugu': `మీ కాల్ సారాంశం ఇక్కడ ఉంది: ${summary}`,
+    const introMessages: { [key: string]: string } = {
+        'English': 'Here is the summary of your call:',
+        'Hindi': 'आपके कॉल का सारांश यहाँ है:',
+        'Telugu': 'మీ కాల్ సారాంశం ఇక్కడ ఉంది:',
     };
+
+    const thankYou = thankYouMessages[language] || thankYouMessages['English'];
+    const intro = introMessages[language] || introMessages['English'];
     
-    const ttsPrompt = ttsPrompts[language] || ttsPrompts['English'];
+    const ttsPrompt = `${thankYou}. ${intro} ${summary}`;
 
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -108,6 +117,7 @@ const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => 
   return (
     <div className="flex flex-col items-center text-center h-full p-4">
       <h2 className="text-2xl font-bold text-green-800 mb-2">Call Summary</h2>
+      <p className="text-green-600 font-medium mb-4">{thankYouMessages[language] || thankYouMessages['English']}</p>
       
       {recordingUrl && (
         <div className="w-full max-w-md mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
