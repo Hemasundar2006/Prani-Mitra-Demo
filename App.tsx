@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import IVRFlow from './components/IVRFlow';
 import ChatFlow from './components/ChatFlow';
-import { PhoneIcon, ChatBubbleLeftRightIcon } from './components/Icons';
+import { PhoneIcon, ChatBubbleLeftRightIcon, DownloadIcon } from './components/Icons'; // Added DownloadIcon import
+import { downloadLogs } from './utils/questionLogger';
 
 type View = 'ivr' | 'chat';
 
@@ -12,9 +13,19 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-green-50 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{height: '90vh'}}>
-        <header className="bg-green-800 text-white p-4 text-center shadow-md">
-          <h1 className="text-2xl font-bold">🌱 Prani Mitra</h1>
-          <p className="text-sm opacity-90">Your AI Farming Assistant</p>
+        <header className="bg-green-800 text-white p-4 flex justify-between items-center shadow-md">
+          <div>
+            <h1 className="text-2xl font-bold">🌱 Prani Mitra</h1>
+            <p className="text-sm opacity-90">Your AI Farming Assistant</p>
+          </div>
+          <button 
+            onClick={downloadLogs}
+            className="text-xs bg-green-700 hover:bg-green-600 text-white py-1 px-3 rounded flex items-center transition-colors"
+            title="Download User Question Logs"
+          >
+            <DownloadIcon className="w-4 h-4 mr-1" />
+            Logs
+          </button>
         </header>
 
         <main className="flex-grow overflow-y-auto p-4 md:p-6 bg-gray-50">

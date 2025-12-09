@@ -1,7 +1,9 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, Chat } from '@google/genai';
 import { PaperAirplaneIcon, ArrowPathIcon } from './Icons';
 import { knowledgeBase } from '../utils/knowledgeBase';
+import { logQuestion } from '../utils/questionLogger';
 
 interface ChatMessage {
   role: 'user' | 'model';
@@ -90,6 +92,10 @@ const ChatFlow: React.FC = () => {
 
     const userMessage: ChatMessage = { role: 'user', text: input };
     setMessages(prev => [...prev, userMessage]);
+    
+    // Log the user's question to the file (localStorage)
+    logQuestion(input);
+
     setInput('');
     setIsLoading(true);
 

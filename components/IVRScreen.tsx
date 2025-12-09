@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 // fix: Remove `LiveSession` from import as it is not an exported member.
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
@@ -6,6 +7,7 @@ import type { TranscriptEntry } from './IVRFlow';
 import { MicIcon, PhoneHangupIcon } from './Icons';
 import { encode, decode, decodeAudioData } from '../utils/audioUtils';
 import { knowledgeBase } from '../utils/knowledgeBase';
+import { logQuestion } from '../utils/questionLogger';
 
 type CallStatus = 'idle' | 'connecting' | 'active' | 'ending';
 
@@ -15,7 +17,7 @@ interface LiveSession {
   close(): void;
 }
 
-const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recordingUrl: string | null) => void, language: string, onStartupError: () => void }> = ({ onCallEnd, language, onStartupError }) => {
+const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recordingUrl: string | null) => void, language: string, service: string, onStartupError: () => void }> = ({ onCallEnd, language, service, onStartupError }) => {
   const [status, setStatus] = useState<CallStatus>('connecting');
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [currentTranscription, setCurrentTranscription] = useState({ user: '', ai: '' });
@@ -95,12 +97,38 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
 
         const knowledgeText = knowledgeBase.map(qa => `Q: ${qa.question}\nA: ${qa.answer}`).join('\n\n');
         
+        let serviceInstruction = "";
+        switch (service) {
+            case 'Farming':
+                serviceInstruction = "The user has explicitly selected 'Farming' services. You must STRICTLY LIMIT your responses to questions about crops, soil, plants, irrigation, fertilizers, weather impact on crops, and pest management for crops. You must answer these questions based primarily on the provided Knowledge Base. DO NOT answer questions about animals, livestock, or veterinary advice. If the user asks about animals, politely inform them in the selected language that you can only answer farming-related questions in this mode.";
+                break;
+            case 'Animal Health':
+                serviceInstruction = "The user has explicitly selected 'Animal Health' services. You must STRICTLY LIMIT your responses to questions about livestock, cattle, poultry, sheep, goats, pigs, animal diseases, animal nutrition, and veterinary advice. You must answer these questions based primarily on the provided Knowledge Base. DO NOT answer questions about growing crops, soil, or plant farming. If the user asks about crops, politely inform them in the selected language that you can only answer animal health questions in this mode.";
+                break;
+            case 'Government Schemes':
+                serviceInstruction = "The user has selected 'Government Schemes'. Focus primarily on explaining government schemes available for farmers. You may use external general knowledge for major Indian schemes if not found in the knowledge base. Do not answer detailed technical farming or veterinary questions unless they relate to a scheme.";
+                break;
+            default:
+                serviceInstruction = "The user has selected 'General Queries'. You may answer questions regarding both Farming and Animal Health based on the provided Knowledge Base.";
+                break;
+        }
+
+        const systemInstruction = `You are Prani Mitra, a friendly and helpful AI assistant for Indian farmers. You must respond ONLY in ${language}.
+        
+        ${serviceInstruction}
+        
+        Use the following Knowledge Base to answer questions. If a question is within the selected service domain but the answer is not in the Knowledge Base, you may provide general helpful advice based on standard agricultural practices in India, but prioritize the Knowledge Base.
+        
+        ---START OF KNOWLEDGE BASE---
+        ${knowledgeText}
+        ---END OF KNOWLEDGE BASE---`;
+
         sessionPromiseRef.current = ai.live.connect({
             model: 'gemini-2.5-flash-native-audio-preview-09-2025',
             config: {
                 responseModalities: [Modality.AUDIO],
                 speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
-                systemInstruction: `You are Prani Mitra, a friendly and helpful AI assistant for Indian farmers. You must respond ONLY in ${language}. Your expertise is strictly limited to farming and animal healthcare. You must answer questions based ONLY on the following information. If the user's question cannot be answered using this information, you must politely say that you don't have information on that topic in ${language}.\n\n---START OF KNOWLEDGE BASE---\n${knowledgeText}\n---END OF KNOWLEDGE BASE---`,
+                systemInstruction: systemInstruction,
                 inputAudioTranscription: {},
                 outputAudioTranscription: {},
             },
@@ -166,7 +194,11 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
                             const newHistory: TranscriptEntry[] = [...prev];
                             const fullInput = currentTranscription.user + tempUser;
                             const fullOutput = currentTranscription.ai + tempAi;
-                            if (fullInput.trim()) newHistory.push({ speaker: 'user', text: fullInput.trim() });
+                            if (fullInput.trim()) {
+                                newHistory.push({ speaker: 'user', text: fullInput.trim() });
+                                // Log the user's spoken question to the file (localStorage)
+                                logQuestion(fullInput.trim());
+                            }
                             if (fullOutput.trim()) newHistory.push({ speaker: 'ai', text: fullOutput.trim() });
                             return newHistory;
                         });
@@ -219,7 +251,7 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
         }
         onStartupError();
     }
-  }, [stopAudioProcessing, language, onStartupError]);
+  }, [stopAudioProcessing, language, service, onStartupError]);
 
   useEffect(() => {
     startCall();
@@ -245,47 +277,47 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
 
   return (
     <div className="flex flex-col h-full">
-        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 className="font-bold text-lg">Live Conversation</h3>
+        <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+            <h3 className="font-bold text-lg text-gray-800">Live Conversation: {service}</h3>
             <CallStatusIndicator />
         </div>
         <div className="flex-grow overflow-y-auto p-4 space-y-4">
             {transcript.map((entry, index) => (
                 <div key={index} className={`flex ${entry.speaker === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`rounded-xl p-3 max-w-xs md:max-w-md ${entry.speaker === 'user' ? 'bg-green-100 text-green-900' : 'bg-gray-100 text-gray-800'}`}>
+                    <div className={`rounded-xl p-3 max-w-xs md:max-w-md shadow-sm ${entry.speaker === 'user' ? 'bg-green-100 text-green-900' : 'bg-white text-gray-800 border border-gray-200'}`}>
                         <p className="text-sm">{entry.text}</p>
                     </div>
                 </div>
             ))}
             {currentTranscription.user && (
                  <div className="flex justify-end">
-                    <div className="rounded-xl p-3 max-w-xs md:max-w-md bg-green-100 text-green-900 opacity-60">
+                    <div className="rounded-xl p-3 max-w-xs md:max-w-md bg-green-50 text-green-900 opacity-60 border border-green-100">
                         <p className="text-sm">{currentTranscription.user}</p>
                     </div>
                 </div>
             )}
              {currentTranscription.ai && (
                  <div className="flex justify-start">
-                    <div className="rounded-xl p-3 max-w-xs md:max-w-md bg-gray-100 text-gray-800 opacity-60">
+                    <div className="rounded-xl p-3 max-w-xs md:max-w-md bg-white text-gray-800 opacity-60 border border-gray-200">
                         <p className="text-sm">{currentTranscription.ai}</p>
                     </div>
                 </div>
             )}
         </div>
-        <div className="p-4 border-t border-gray-200 text-center">
+        <div className="p-6 border-t border-gray-200 text-center bg-white">
             {status === 'active' && (
-                <div className="flex flex-col items-center">
-                    <div className="relative w-16 h-16 flex items-center justify-center">
-                        <div className="absolute inset-0 bg-green-500 rounded-full animate-ping"></div>
-                        <div className="relative bg-green-600 rounded-full p-4"><MicIcon className="w-8 h-8 text-white"/></div>
+                <div className="flex flex-col items-center mb-4">
+                    <div className="relative w-20 h-20 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-20"></div>
+                        <div className="relative bg-green-600 rounded-full p-5 shadow-lg"><MicIcon className="w-10 h-10 text-white"/></div>
                     </div>
-                    <p className="mt-2 text-sm text-gray-500">Listening...</p>
+                    <p className="mt-3 text-sm text-gray-500 font-medium">Listening...</p>
                 </div>
             )}
              <button
                 onClick={endCall}
                 disabled={status === 'ending' || status === 'idle'}
-                className="bg-red-600 text-white font-bold py-3 px-6 rounded-full shadow-lg hover:bg-red-700 disabled:bg-red-300 transition-colors flex items-center justify-center mx-auto"
+                className="bg-red-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-red-700 disabled:bg-red-300 transition-colors flex items-center justify-center mx-auto"
             >
                 <PhoneHangupIcon className="w-5 h-5 mr-2" />
                 End Call

@@ -1,3 +1,4 @@
+
 // This file contains the structured Q&A data parsed from the user-provided documents.
 // This acts as the single source of truth for the RAG (Retrieval-Augmented Generation) system.
 
@@ -21,6 +22,18 @@ export const knowledgeBase: QA[] = [
   { question: 'Essential yearly vaccines?', answer: 'FMD (6-monthly), HS (pre-monsoon), Brucellosis for heifers' },
   { question: 'How to feed calves first 3 months?', answer: 'Colostrum <2 h, milk 10% body weight, calf starter from week 1' },
   { question: 'Why add mineral mixture?', answer: 'Area-specific mix prevents Ca, P, Zn deficits and sustains milk yield' },
+  
+  // PDF Extraction: Cow and Buffalo Specifics
+  { question: 'How to treat rainy-season foot-rot in cows/buffalo?', answer: 'Clean hoof thoroughly, keep animal in dry area. Vet may trim hoof and give antibiotics (oxytetracycline/ceftiofur). Use zinc/copper sulphate footbaths.' },
+  { question: 'What to do for heat stress in cattle during summer?', answer: 'Provide plenty of cool water (needs up to 2.5x more), shade, and good airflow. Move milking to cooler hours (early morning/late evening).' },
+  { question: 'How to prevent summer pneumonia in calves?', answer: 'Vaccinate before summer/turnout. Ensure good colostrum feeding. If calf shows fast breathing/fever, call vet immediately as death can be sudden.' },
+  { question: 'How to control monsoon parasites in cattle?', answer: 'Deworm at start and end of monsoon based on fecal tests. Use pour-on/sprays for ticks. Rotate grazing areas to avoid overstocking.' },
+  { question: 'What actions to take for Foot-and-Mouth Disease (FMD) outbreak?', answer: 'Isolate sick animals immediately. Only supportive care (soft feed, fluids) works; no cure. Vaccinate herd every 6 months. Disinfect sheds.' },
+  { question: 'Why is Anthrax dangerous and what precautions to take?', answer: 'Causes sudden death with bleeding; dangerous to humans. Never open the carcass. Vaccinate in prone areas. Inform government vets immediately.' },
+  { question: 'How to manage Brucellosis in cattle?', answer: 'Causes abortion/infertility. Vaccinate female calves (4-8 months). Handle abortion material with gloves. Cull infected animals; no treatment recommended.' },
+  { question: 'Treatment for metabolic problems like Milk Fever and Ketosis?', answer: 'Milk fever (low calcium, unable to stand) needs IV/subcutaneous calcium. Ketosis (weight loss) needs glucose/propylene glycol. Balance ration in late pregnancy.' },
+  { question: 'General precautions when cattle treatments fail?', answer: 'If home remedies fail in 1-3 days, get vet help. Isolate sick animals. Use lab tests for repeated disease.' },
+
   // Sheep & Goats
   { question: 'Signs of internal parasites?', answer: 'Pale gums, bottle-jaw, weight loss, diarrhea' },
   { question: 'How to prevent foot-rot?', answer: 'Keep yards dry, trim hooves, zinc/copper sulfate footbaths' },
@@ -34,6 +47,14 @@ export const knowledgeBase: QA[] = [
   { question: 'Safe concentrate % in late pregnancy?', answer: 'Keep at 16-18% CP, 100-200g/day to avoid ketosis' },
   { question: 'Essential vaccines for sheep and goats?', answer: 'PPR, enterotoxaemia. Schedule before rains and again annually' },
   { question: 'Difference between browsing & grazing diets?', answer: 'Goats browse shrubs; sheep graze grasses—use mixed pasture for balance' },
+  
+  // PDF Extraction: Sheep and Goat Specifics
+  { question: 'Managing rainy-season pneumonia and diarrhoea in sheep/goats?', answer: 'Keep dry, avoid direct drafts. Give colostrum to kids/lambs. Treat fever/bloody diarrhoea with antibiotics/fluids via vet immediately.' },
+  { question: 'Worm and liver fluke control in sheep/goats?', answer: 'Deworm pre/post-monsoon based on fecal egg counts. Avoid grazing in low-lying/marshy areas to prevent liver fluke.' },
+  { question: 'Prevention of PPR (Goat Plague) and Enterotoxaemia?', answer: 'Vaccination is main protection. Prevent Enterotoxaemia by avoiding sudden diet changes to rich grains.' },
+  { question: 'FMD management in sheep/goats?', answer: 'Signs can be mild. Vaccinate every 6 months. Separate from cattle/pigs during outbreaks.' },
+  { question: 'Ectoparasite control (lice/ticks/mange) in sheep/goats?', answer: 'Inspect for itching/hair loss. Use insecticidal dips/sprays (e.g., amitraz). Maintain shed hygiene and burn old bedding.' },
+
   // Poultry
   { question: 'Symptoms of Newcastle Disease?', answer: 'Respiratory distress, twisted neck, egg drop, sudden death' },
   { question: 'Natural control of coccidiosis?', answer: 'Crushed garlic water, papaya-leaf powder, dry litter, probiotics' },
@@ -47,6 +68,14 @@ export const knowledgeBase: QA[] = [
   { question: 'Winter brooding temperature for poultry?', answer: '32°C week 1; drop ≈3°C weekly till 21°C' },
   { question: 'Key feed ingredients for poultry?', answer: '60% cereals, 20-30% oil-seed meal, vit-min premix 0.8%' },
   { question: 'Causes of sudden death in flocks?', answer: 'Heart failure, ND, avian influenza, heat stroke' },
+  
+  // PDF Extraction: Chicken Specifics
+  { question: 'Managing Coccidiosis in chickens (warm/humid litter)?', answer: 'Keep litter dry and loose. Use anticoccidial drugs or vaccines. Isolate affected birds showing blood/watery droppings.' },
+  { question: 'Poultry heat stress interventions?', answer: 'Strong ventilation (fans/foggers), cool water, avoid overcrowding. Feed in cooler hours (early morning/late evening).' },
+  { question: 'Respiratory problems in cold/damp weather for poultry?', answer: 'Keep houses dry, avoid drafts but ensure ventilation to remove ammonia. Treat with antibiotics if bacterial infection persists.' },
+  { question: 'Prevention of Newcastle, Infectious Bronchitis, Marek’s?', answer: 'Vaccination suited to flock type. Maintain cold chain. Use proper dosing methods (eye-drop/water).' },
+  { question: 'Managing Bacterial infections (e.g., colibacillosis) in poultry?', answer: 'Reduce stress (wet litter, ammonia). Vet may prescribe antibiotics based on culture/sensitivity.' },
+
   // Pigs
   { question: 'Signs of swine dysentery?', answer: 'Bloody diarrhea, weight loss, sunken belly, dehydration' },
   { question: 'How is Classical Swine Fever diagnosed?', answer: 'Blood PCR, leukopenia, spleen petechiae, FAT test' },
@@ -60,21 +89,39 @@ export const knowledgeBase: QA[] = [
   { question: 'Essential vaccines for pigs (CSF, FMD)?', answer: 'First at 6 weeks, booster annually; vital for trade' },
   { question: 'What is “flushing” in sows?', answer: 'Extra 0.5 kg grain for 10 d pre-mating lifts ovulation rate' },
   { question: 'Why track daily feed intake?', answer: 'Prevents over- or under-formulation, cutting feed cost' },
-  // Real-Time Health Problems
-  { question: 'What should I do if I see a cow limping suddenly?', answer: 'Check the hoof for injuries or foot rot. Clean, disinfect, isolate, and call a vet quickly.' },
-  { question: 'How to detect and manage early signs of bovine respiratory disease?', answer: 'Watch for coughing, nasal discharge, fast breathing, reduced appetite. Isolate and improve ventilation, call a vet.' },
-  { question: 'What are the signs of heat stress in cattle and how to give immediate relief?', answer: 'Heavy panting, drooling, weakness. Give shade, cool water with electrolytes, fans or sprinklers.' },
-  { question: 'How to handle sudden milk drop in dairy cows?', answer: 'Check for mastitis, stress, feed changes. Treat infections quickly and fix diet.' },
-  { question: 'If a cow has high fever and diarrhea, what to do?', answer: 'Isolate, give clean water, stop concentrates, and call vet immediately.' },
-  { question: 'Real-time signs of lameness and diagnosis?', answer: 'Reduced movement, uneven gait, avoiding weight on one leg. Use activity sensors for early detection.' },
-  { question: 'What to do if sheep breathe rapidly with nasal discharge?', answer: 'Could be pneumonia — isolate, improve ventilation, call vet.' },
-  { question: 'How to quickly detect parasite infestation in sheep/goats?', answer: 'Check pale gums, swelling under jaw, diarrhea; deworm as per vet advice.' },
-  { question: 'Emergency actions for heat stress in goats?', answer: 'Shade, cool water, spray, reduce activity.' },
-  { question: 'Quick signs of Newcastle disease and action?', answer: 'Labored breathing, twisted neck; isolate and call vet.' },
-  { question: 'Fast response to coccidiosis outbreak?', answer: 'Watery/bloody diarrhea, lethargy; give anticoccidials, keep litter dry.' },
-  { question: 'Early signs of swine dysentery & action?', answer: 'Bloody diarrhea, weakness; isolate and call vet.' },
-  { question: 'How to detect and relieve pig heat stress?', answer: 'Panting, less feed; give sprinklers, shade, more water.' },
   
+  // PDF Extraction: Pig Specifics
+  { question: 'Common rainy season issues in pigs?', answer: 'Worms, pneumonia, and diarrhoea. Prevent by strategic deworming and keeping pens dry and warm.' },
+  { question: 'How to manage heat stress in pigs?', answer: 'Provide fans, shade, sprinklers/misting. Feed in cooler hours. Pigs need cooling as they cannot sweat effectively.' },
+  { question: 'African Swine Fever (ASF) precautions?', answer: 'No vaccine available. Strict biosecurity: no swill feeding, restrict visitors. Cull infected herds. Notifiable disease.' },
+  { question: 'Classical Swine Fever (CSF) control?', answer: 'Vaccinate healthy pigs >3 months. Isolate sick animals. Get lab confirmation.' },
+  { question: 'Piglet diarrhoea management?', answer: 'Hygiene, warm dry creep area. Vet treatment with fluids/electrolytes/antibiotics.' },
+
+  // --- PDF Extracted Knowledge: Dogs ---
+  { question: 'General health precautions for dogs?', answer: 'Vaccinate (DHPP + Rabies), monthly tick/flea prevention, balanced diet. Isolate sick dogs.' },
+  { question: 'Treatment for tick-borne diseases (babesia/ehrlichia) in dogs?', answer: 'Doxycycline (5-10 mg/kg/day) for 4 weeks. Supportive fluids.' },
+  { question: 'Parvovirus management in dogs?', answer: 'IV fluids, metronidazole, antibiotics. Isolation is critical. Disinfect with bleach (1:32).' },
+  { question: 'Distemper in dogs?', answer: 'No specific cure; supportive care and antibiotics for secondary infections.' },
+  { question: 'Dog feeding guidelines?', answer: 'Adults: 2-3% body weight. Pups: 3-4 meals/day. Avoid table scraps, milk, bones.' },
+  { question: 'Daily/Weekly routine for dogs?', answer: 'Daily: 30-60 min walks, brush teeth. Weekly: Bath with medicated shampoo if itchy, check ticks.' },
+
+  // --- PDF Extracted Knowledge: Cats ---
+  { question: 'Parasite prevention for cats?', answer: 'Revolution Plus (topical) covers fleas, ticks, mites, worms. Frontline Plus is OTC. Essential even for indoor cats.' },
+  { question: 'Viral infection management in cats?', answer: 'FVRCP and FeLV vaccines. Keep FeLV negative cats indoors. No cure for FeLV; supportive care only.' },
+  { question: 'Managing kidney disease and diabetes in cats?', answer: 'Renal diets (low phos), hydration. Insulin for diabetes with glucose curves. Dental hygiene is important.' },
+
+  // --- PDF Extracted Knowledge: Horses ---
+  { question: 'Horse parasite control?', answer: 'Fly sheets/masks, permethrin sprays. Deworming based on fecal egg counts (ivermectin/moxidectin).' },
+  { question: 'Colic and Laminitis prevention in horses?', answer: 'Low-NSC forage (<10% starch), gradual feed changes, regular exercise. Cryotherapy/NSAIDs for acute laminitis.' },
+  { question: 'Equine Influenza and Strangles?', answer: 'Vaccination. Isolate new horses 3 weeks. Strangles needs hygiene; antibiotics only if severe (penicillin).' },
+  { question: 'Chronic joint/hoof problems in horses?', answer: 'Balanced trim every 4-6 weeks. Joint supplements. NSAIDs/shockwave for pain.' },
+
+  // --- PDF Extracted Knowledge: Rabbits ---
+  { question: 'Rabbit heat stress signs and care?', answer: 'Panting, drooling. Cool immediately (frozen bottles, damp ears, not body). Vet check for shock.' },
+  { question: 'Fly strike prevention in rabbits?', answer: 'Check rear daily, clean hutch. Rearguard spray (cyromazine). Vet emergency if maggots found.' },
+  { question: 'Myxomatosis and RHDV prevention in rabbits?', answer: 'Annual vaccine (Nobivac Myxo-RHD PLUS). Mosquito screens.' },
+  { question: 'Rabbit dental and diet care?', answer: 'Unlimited timothy hay (80% diet), limited pellets. Check teeth monthly. Vet burring for overgrowth.' },
+
   // --- Crop Planning, Soil, Water Management ---
   { question: 'What are the main cropping seasons in India?', answer: 'Kharif (June–October), Rabi (October–March), Zaid (March-June).' },
   { question: 'Which crops suit the Kharif season?', answer: 'Rice, maize, cotton, sugarcane, soybean, groundnut.' },
