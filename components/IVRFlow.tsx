@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import IVRScreen from './IVRScreen';
 import SummaryScreen from './SummaryScreen';
@@ -34,11 +33,39 @@ const WelcomeScreen: React.FC<{ onStart: () => void, language: string }> = ({ on
   </div>
 );
 
+const ConfirmationDialog: React.FC<{ onConfirm: () => void; onCancel: () => void }> = ({ onConfirm, onCancel }) => (
+    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+      <div className="bg-white rounded-2xl shadow-xl p-6 m-4 max-w-sm text-center w-full">
+        <h3 id="dialog-title" className="text-xl font-semibold text-gray-800 mb-2">Ready to start your call?</h3>
+        <p className="text-sm text-gray-600 mb-6">
+          Please ensure you are in a quiet environment for the best experience.
+        </p>
+        <div className="flex justify-center gap-4">
+          <button
+            onClick={onCancel}
+            className="px-6 py-2 rounded-full font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400"
+            aria-label="Cancel starting the call"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-6 py-2 rounded-full font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
+            aria-label="Confirm to start the call"
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
 const IVRFlow: React.FC = () => {
   const [step, setStep] = useState<'language' | 'welcome' | 'ivr' | 'summary'>('language');
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [language, setLanguage] = useState<string>('English');
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   const handleLanguageSelect = (lang: string) => {
     setLanguage(lang);
@@ -60,12 +87,31 @@ const IVRFlow: React.FC = () => {
   const handleStartupError = () => {
     setStep('welcome');
   };
+  
+  const handleStartCallRequest = () => {
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmStartCall = () => {
+    setShowConfirmation(false);
+    setStep('ivr');
+  };
+
+  const handleCancelStartCall = () => {
+    setShowConfirmation(false);
+  };
+
 
   switch (step) {
     case 'language':
         return <LanguageSelectionScreen onSelect={handleLanguageSelect} />;
     case 'welcome':
-      return <WelcomeScreen onStart={() => setStep('ivr')} language={language} />;
+      return (
+        <div className="relative h-full">
+            <WelcomeScreen onStart={handleStartCallRequest} language={language} />
+            {showConfirmation && <ConfirmationDialog onConfirm={handleConfirmStartCall} onCancel={handleCancelStartCall} />}
+        </div>
+      );
     case 'ivr':
       return <IVRScreen onCallEnd={handleCallEnd} language={language} onStartupError={handleStartupError} />;
     case 'summary':
