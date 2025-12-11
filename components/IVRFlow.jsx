@@ -3,12 +3,7 @@ import IVRScreen from './IVRScreen';
 import SummaryScreen from './SummaryScreen';
 import { PhoneIcon } from './Icons';
 
-export type TranscriptEntry = {
-  speaker: 'user' | 'ai';
-  text: string;
-};
-
-const LandingScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => (
+const LandingScreen = ({ onStart }) => (
   <div className="text-center flex flex-col items-center justify-center h-full">
     <div className="bg-green-100 p-6 rounded-full mb-6 animate-pulse">
          <PhoneIcon className="w-12 h-12 text-green-600" />
@@ -24,7 +19,7 @@ const LandingScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => (
   </div>
 );
 
-const LanguageSelectionScreen: React.FC<{ onSelect: (lang: string) => void }> = ({ onSelect }) => (
+const LanguageSelectionScreen = ({ onSelect }) => (
     <div className="text-center flex flex-col items-center justify-center h-full">
       <h2 className="text-2xl font-bold text-green-800 mb-2">Select Language</h2>
       <p className="text-gray-600 mb-6 max-w-md">Please choose your preferred language.</p>
@@ -36,7 +31,7 @@ const LanguageSelectionScreen: React.FC<{ onSelect: (lang: string) => void }> = 
     </div>
 );
 
-const ServiceSelectionScreen: React.FC<{ onSelect: (service: string) => void }> = ({ onSelect }) => (
+const ServiceSelectionScreen = ({ onSelect }) => (
     <div className="text-center flex flex-col items-center justify-center h-full">
       <h2 className="text-2xl font-bold text-green-800 mb-2">Select Service</h2>
       <p className="text-gray-600 mb-6 max-w-md">Please select the topic you need help with.</p>
@@ -56,7 +51,7 @@ const ServiceSelectionScreen: React.FC<{ onSelect: (service: string) => void }> 
     </div>
 );
 
-const ConfirmationDialog: React.FC<{ onConfirm: () => void; onCancel: () => void; service: string; language: string }> = ({ onConfirm, onCancel, service, language }) => (
+const ConfirmationDialog = ({ onConfirm, onCancel, service, language }) => (
     <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
       <div className="bg-white rounded-2xl shadow-xl p-6 m-4 max-w-sm text-center w-full">
         <h3 id="dialog-title" className="text-xl font-semibold text-gray-800 mb-2">Ready to start?</h3>
@@ -83,24 +78,24 @@ const ConfirmationDialog: React.FC<{ onConfirm: () => void; onCancel: () => void
     </div>
   );
 
-const IVRFlow: React.FC = () => {
-  const [step, setStep] = useState<'landing' | 'language' | 'service' | 'ivr' | 'summary'>('landing');
-  const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
-  const [language, setLanguage] = useState<string>('English');
-  const [service, setService] = useState<string>('General Queries');
-  const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
+const IVRFlow = () => {
+  const [step, setStep] = useState('landing');
+  const [transcript, setTranscript] = useState([]);
+  const [language, setLanguage] = useState('English');
+  const [service, setService] = useState('General Queries');
+  const [recordingUrl, setRecordingUrl] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const handleStartRequest = () => {
       setStep('language');
   };
 
-  const handleLanguageSelect = (lang: string) => {
+  const handleLanguageSelect = (lang) => {
     setLanguage(lang);
     setStep('service');
   };
 
-  const handleServiceSelect = (svc: string) => {
+  const handleServiceSelect = (svc) => {
       setService(svc);
       setShowConfirmation(true);
   };
@@ -114,7 +109,7 @@ const IVRFlow: React.FC = () => {
     setShowConfirmation(false);
   };
 
-  const handleCallEnd = (finalTranscript: TranscriptEntry[], url: string | null) => {
+  const handleCallEnd = (finalTranscript, url) => {
     setTranscript(finalTranscript);
     setRecordingUrl(url);
     setStep('summary');

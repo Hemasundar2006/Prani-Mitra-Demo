@@ -1,39 +1,28 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-// fix: Remove `LiveSession` from import as it is not an exported member.
-import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import type { TranscriptEntry } from './IVRFlow';
-// fix: Removed unused StopCircleIcon import.
+import { GoogleGenAI, Modality } from '@google/genai';
 import { MicIcon, PhoneHangupIcon } from './Icons';
 import { encode, decode, decodeAudioData } from '../utils/audioUtils';
 import { knowledgeBase } from '../utils/knowledgeBase';
 import { logQuestion } from '../utils/questionLogger';
 
-type CallStatus = 'idle' | 'connecting' | 'active' | 'ending';
-
-// fix: Define a minimal `LiveSession` interface locally for type safety, as it's not exported from the SDK.
-interface LiveSession {
-  sendRealtimeInput(input: { media: { data: string; mimeType: string; } }): void;
-  close(): void;
-}
-
-const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recordingUrl: string | null) => void, language: string, service: string, onStartupError: () => void }> = ({ onCallEnd, language, service, onStartupError }) => {
-  const [status, setStatus] = useState<CallStatus>('connecting');
-  const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
+const IVRScreen = ({ onCallEnd, language, service, onStartupError }) => {
+  const [status, setStatus] = useState('connecting');
+  const [transcript, setTranscript] = useState([]);
   const [currentTranscription, setCurrentTranscription] = useState({ user: '', ai: '' });
   const [permissionDenied, setPermissionDenied] = useState(false);
   
-  const sessionPromiseRef = useRef<Promise<LiveSession> | null>(null);
-  const inputAudioContextRef = useRef<AudioContext | null>(null);
-  const outputAudioContextRef = useRef<AudioContext | null>(null);
-  const nextStartTimeRef = useRef<number>(0);
-  const audioSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
-  const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
-  const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const recordingSourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const mergedStreamDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const sessionPromiseRef = useRef(null);
+  const inputAudioContextRef = useRef(null);
+  const outputAudioContextRef = useRef(null);
+  const nextStartTimeRef = useRef(0);
+  const audioSourcesRef = useRef(new Set());
+  const scriptProcessorRef = useRef(null);
+  const mediaStreamSourceRef = useRef(null);
+  const recordingSourceNodeRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const mergedStreamDestRef = useRef(null);
   const retryCountRef = useRef(0);
   const mountedRef = useRef(true);
 
@@ -98,14 +87,12 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
         // Check if mounted after async operation
         if (!mountedRef.current) return;
 
-        // fix: Add `(window as any)` to handle vendor-prefixed `webkitAudioContext` for Safari compatibility.
-        inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-        // fix: Add `(window as any)` to handle vendor-prefixed `webkitAudioContext` for Safari compatibility.
-        outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        inputAudioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+        outputAudioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
         mergedStreamDestRef.current = outputAudioContextRef.current.createMediaStreamDestination();
         nextStartTimeRef.current = 0;
         
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
         const knowledgeText = knowledgeBase.map(qa => `Q: ${qa.question}\nA: ${qa.answer}`).join('\n\n');
         
@@ -125,7 +112,7 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
                 break;
         }
 
-        const closingMessages: { [key: string]: string } = {
+        const closingMessages = {
             'English': "Thank you for calling Prani Mitra",
             'Hindi': "प्राणी मित्र को कॉल करने के लिए धन्यवाद",
             'Telugu': "ప్రాణి మిత్రకు కాల్ చేసినందుకు ధన్యవాదాలు"
@@ -160,16 +147,16 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
                     retryCountRef.current = 0; // Reset retry count on success
                     
                     // Create two separate source nodes from the same stream for each audio context.
-                    const inputSourceNode = inputAudioContextRef.current!.createMediaStreamSource(stream);
-                    const recordingSourceNode = outputAudioContextRef.current!.createMediaStreamSource(stream);
+                    const inputSourceNode = inputAudioContextRef.current.createMediaStreamSource(stream);
+                    const recordingSourceNode = outputAudioContextRef.current.createMediaStreamSource(stream);
                     
                     mediaStreamSourceRef.current = inputSourceNode;
                     recordingSourceNodeRef.current = recordingSourceNode;
 
                     // Route user's mic (from the output context) to the merged stream for recording.
-                    recordingSourceNode.connect(mergedStreamDestRef.current!);
+                    recordingSourceNode.connect(mergedStreamDestRef.current);
 
-                    const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(4096, 1, 1);
+                    const scriptProcessor = inputAudioContextRef.current.createScriptProcessor(4096, 1, 1);
                     scriptProcessorRef.current = scriptProcessor;
                     
                     scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
@@ -186,10 +173,10 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
                         });
                     };
                     inputSourceNode.connect(scriptProcessor);
-                    scriptProcessor.connect(inputAudioContextRef.current!.destination);
+                    scriptProcessor.connect(inputAudioContextRef.current.destination);
                     
                     // Start recording from the destination stream
-                    mediaRecorderRef.current = new MediaRecorder(mergedStreamDestRef.current!.stream);
+                    mediaRecorderRef.current = new MediaRecorder(mergedStreamDestRef.current.stream);
                     audioChunksRef.current = [];
                     mediaRecorderRef.current.ondataavailable = (event) => {
                         if (event.data.size > 0) {
@@ -198,7 +185,7 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
                     };
                     mediaRecorderRef.current.start();
                 },
-                onmessage: async (message: LiveServerMessage) => {
+                onmessage: async (message) => {
                     if (!mountedRef.current) return;
                     let tempUser = '';
                     let tempAi = '';
@@ -215,7 +202,7 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
 
                     if (message.serverContent?.turnComplete) {
                         setTranscript(prev => {
-                            const newHistory: TranscriptEntry[] = [...prev];
+                            const newHistory = [...prev];
                             const fullInput = currentTranscription.user + tempUser;
                             const fullOutput = currentTranscription.ai + tempAi;
                             if (fullInput.trim()) {
@@ -231,7 +218,7 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
 
                     const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
                     if (base64Audio) {
-                        const audioContext = outputAudioContextRef.current!;
+                        const audioContext = outputAudioContextRef.current;
                         nextStartTimeRef.current = Math.max(nextStartTimeRef.current, audioContext.currentTime);
                         const audioBuffer = await decodeAudioData(decode(base64Audio), audioContext, 24000, 1);
                         const sourceNode = audioContext.createBufferSource();
@@ -253,7 +240,7 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
                         audioSourcesRef.current.add(sourceNode);
                     }
                 },
-                onerror: (e: ErrorEvent) => {
+                onerror: (e) => {
                     console.error('Session error:', e);
                     
                     // Attempt retry if we encounter a network error during connection phase
@@ -270,7 +257,7 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
                     setStatus('idle');
                     stopAudioProcessing();
                 },
-                onclose: (e: CloseEvent) => {
+                onclose: (e) => {
                    console.log("Session closed.");
                 },
             },

@@ -5,10 +5,8 @@ import ChatFlow from './components/ChatFlow';
 import { PhoneIcon, ChatBubbleLeftRightIcon, DownloadIcon } from './components/Icons'; // Added DownloadIcon import
 import { downloadLogs } from './utils/questionLogger';
 
-type View = 'ivr' | 'chat';
-
-const App: React.FC = () => {
-  const [view, setView] = useState<View>('ivr');
+const App = () => {
+  const [view, setView] = useState('ivr');
 
   return (
     <div className="min-h-screen bg-green-50 flex flex-col items-center justify-center p-4">

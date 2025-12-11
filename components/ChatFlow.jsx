@@ -1,18 +1,11 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI, Chat } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import { PaperAirplaneIcon, ArrowPathIcon } from './Icons';
 import { knowledgeBase } from '../utils/knowledgeBase';
 import { logQuestion } from '../utils/questionLogger';
 
-interface ChatMessage {
-  role: 'user' | 'model';
-  text: string;
-}
-
-type InitializationState = 'initializing' | 'ready' | 'error';
-
-const LanguageSelection: React.FC<{ onSelect: (lang: string) => void }> = ({ onSelect }) => (
+const LanguageSelection = ({ onSelect }) => (
     <div className="text-center flex flex-col items-center justify-center h-full">
       <h2 className="text-2xl font-bold text-green-800 mb-2">Select Language</h2>
       <p className="text-gray-600 mb-6 max-w-md">Please choose your preferred language to start chatting.</p>
@@ -24,7 +17,7 @@ const LanguageSelection: React.FC<{ onSelect: (lang: string) => void }> = ({ onS
     </div>
 );
 
-const ServiceSelection: React.FC<{ onSelect: (service: string) => void }> = ({ onSelect }) => (
+const ServiceSelection = ({ onSelect }) => (
     <div className="text-center flex flex-col items-center justify-center h-full">
       <h2 className="text-2xl font-bold text-green-800 mb-2">Select Service</h2>
       <p className="text-gray-600 mb-6 max-w-md">Please select the topic you need help with.</p>
@@ -45,16 +38,16 @@ const ServiceSelection: React.FC<{ onSelect: (service: string) => void }> = ({ o
 );
 
 
-const ChatFlow: React.FC = () => {
-  const [language, setLanguage] = useState<string | null>(null);
-  const [service, setService] = useState<string | null>(null);
-  const [initState, setInitState] = useState<InitializationState>('initializing');
-  const [chat, setChat] = useState<Chat | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+const ChatFlow = () => {
+  const [language, setLanguage] = useState(null);
+  const [service, setService] = useState(null);
+  const [initState, setInitState] = useState('initializing');
+  const [chat, setChat] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState(null);
+  const messagesEndRef = useRef(null);
 
   const initializeChat = useCallback(async () => {
     if (!language || !service) return;
@@ -63,7 +56,7 @@ const ChatFlow: React.FC = () => {
     setChat(null);
     setMessages([]);
 
-    const welcomeMessages: { [key: string]: string } = {
+    const welcomeMessages = {
         'English': `Hello! I am your Prani Mitra Assistant for ${service}. How can I help you today?`,
         'Hindi': `नमस्ते! मैं ${service} के लिए आपका प्राणी मित्र सहायक हूँ। आज मैं आपकी कैसे मदद कर सकता हूँ?`,
         'Telugu': `నమస్కారం! నేను ${service} కోసం మీ ప్రాణి మిత్ర సహాయకుడిని. ఈ రోజు నేను మీకు ఎలా సహాయపడగలను?`,
@@ -87,14 +80,14 @@ const ChatFlow: React.FC = () => {
             break;
     }
 
-    const systemInstructions: { [key: string]: string } = {
+    const systemInstructions = {
         'English': `You are Prani Mitra, a helpful AI assistant for Indian farmers. Your expertise is strictly limited to the selected service: ${service}. You must answer ONLY in English. ${serviceInstruction}\n\nUse the following Knowledge Base. If the answer is not in the Knowledge Base, you may use general agricultural knowledge suitable for India, but ONLY if it falls within the strict scope of ${service}. If the user ends the conversation, say "Thank you for calling Prani Mitra" and nothing else.\n\n---START OF KNOWLEDGE BASE---\n${knowledgeText}\n---END OF KNOWLEDGE BASE---`,
         'Hindi': `आप प्राणी मित्र हैं, जो भारतीय किसानों के लिए एक सहायक एआई हैं। आपकी विशेषज्ञता चयनित सेवा: ${service} तक सीमित है। आपको केवल हिंदी में जवाब देना है। ${serviceInstruction}\n\nनिम्नलिखित ज्ञान आधार का उपयोग करें। यदि उत्तर ज्ञान आधार में नहीं है, तो आप भारत के लिए उपयुक्त सामान्य कृषि ज्ञान का उपयोग कर सकते हैं, लेकिन केवल तभी जब वह ${service} के सख्त दायरे में आता है। यदि उपयोगकर्ता बातचीत समाप्त करता है, तो केवल "प्राणी मित्र को कॉल करने के लिए धन्यवाद" कहें।\n\n---START OF KNOWLEDGE BASE---\n${knowledgeText}\n---END OF KNOWLEDGE BASE---`,
         'Telugu': `మీరు ప్రాణి మిత్ర, భారతీయ రైతులకు సహాయపడే ఒక AI సహాయకుడు. మీ నైపుణ్యం ఎంచుకున్న సేవ: ${service} కు ఖచ్చితంగా పరిమితం. మీరు కేవలం తెలుగులో మాత్రమే సమాధానం ఇవ్వాలి. ${serviceInstruction}\n\nదిగువ ఉన్న నాలెడ్జ్ బేస్ ఉపయోగించండి. సమాధానం నాలెడ్జ్ బేస్‌లో లేకపోతే, మీరు భారతదేశానికి సరిపోయే సాధారణ వ్యవసాయ జ్ఞానాన్ని ఉపయోగించవచ్చు, కానీ అది ${service} యొక్క పరిధిలో ఉంటే మాత్రమే. వినియోగదారు సంభాషణను ముగించినట్లయితే, "ప్రాణి మిత్రకు కాల్ చేసినందుకు ధన్యవాదాలు" అని మాత్రమే చెప్పండి.\n\n---START OF KNOWLEDGE BASE---\n${knowledgeText}\n---END OF KNOWLEDGE BASE---`,
     }
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const chatSession = ai.chats.create({
         model: 'gemini-2.5-flash',
         config: {
@@ -127,7 +120,7 @@ const ChatFlow: React.FC = () => {
   const handleSend = async () => {
     if (!input.trim() || isLoading || !chat) return;
 
-    const userMessage: ChatMessage = { role: 'user', text: input };
+    const userMessage = { role: 'user', text: input };
     setMessages(prev => [...prev, userMessage]);
     
     // Log the user's question to the file (localStorage)
@@ -138,11 +131,11 @@ const ChatFlow: React.FC = () => {
 
     try {
       const response = await chat.sendMessage({ message: input });
-      const modelMessage: ChatMessage = { role: 'model', text: response.text };
+      const modelMessage = { role: 'model', text: response.text };
       setMessages(prev => [...prev, modelMessage]);
     } catch (error) {
       console.error('Chat error:', error);
-      const errorMessage: ChatMessage = { role: 'model', text: 'Sorry, I encountered an error. Please try again.' };
+      const errorMessage = { role: 'model', text: 'Sorry, I encountered an error. Please try again.' };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);

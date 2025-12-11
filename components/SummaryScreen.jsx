@@ -1,19 +1,18 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { TranscriptEntry } from './IVRFlow';
 import { GoogleGenAI, Modality } from '@google/genai';
 import { SpeakerWaveIcon, ArrowPathIcon, ShareIcon, DownloadIcon } from './Icons';
 import { decode, decodeAudioData } from '../utils/audioUtils';
 
-const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => void, language: string, recordingUrl: string | null }> = ({ transcript, onRestart, language, recordingUrl }) => {
+const SummaryScreen = ({ transcript, onRestart, language, recordingUrl }) => {
   const [summary, setSummary] = useState('');
   const [isLoadingSummary, setIsLoadingSummary] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   
-  const audioContextRef = React.useRef<AudioContext | null>(null);
-  const audioSourceRef = React.useRef<AudioBufferSourceNode | null>(null);
+  const audioContextRef = React.useRef(null);
+  const audioSourceRef = React.useRef(null);
 
-  const thankYouMessages: { [key: string]: string } = {
+  const thankYouMessages = {
     'English': 'Thank you for calling Prani Mitra',
     'Hindi': 'प्राणी मित्र को कॉल करने के लिए धन्यवाद',
     'Telugu': 'ప్రాణి మిత్రకు కాల్ చేసినందుకు ధన్యవాదాలు',
@@ -40,7 +39,7 @@ const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => 
     const prompt = `Based on the following conversation with a farmer, please provide a concise summary of the key points and advice given. The summary must be written in ${language}. Format it as a simple, easy-to-read text message that could be sent via SMS.\n\nConversation:\n${conversationText}\n\nSummary:`;
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt
@@ -63,7 +62,7 @@ const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => 
 
     setIsSpeaking(true);
 
-    const introMessages: { [key: string]: string } = {
+    const introMessages = {
         'English': 'Here is the summary of your call:',
         'Hindi': 'आपके कॉल का सारांश यहाँ है:',
         'Telugu': 'మీ కాల్ సారాంశం ఇక్కడ ఉంది:',
@@ -75,7 +74,7 @@ const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => 
     const ttsPrompt = `${thankYou}. ${intro} ${summary}`;
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
         contents: [{ parts: [{ text: ttsPrompt }] }],
@@ -88,8 +87,7 @@ const SummaryScreen: React.FC<{ transcript: TranscriptEntry[], onRestart: () => 
       const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
       if (base64Audio) {
         if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
-          // fix: Add `(window as any)` to handle vendor-prefixed `webkitAudioContext` for Safari compatibility.
-          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+          audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
         }
         const audioContext = audioContextRef.current;
         const audioBuffer = await decodeAudioData(decode(base64Audio), audioContext, 24000, 1);
