@@ -21,6 +21,7 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
   const [status, setStatus] = useState<CallStatus>('connecting');
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [currentTranscription, setCurrentTranscription] = useState({ user: '', ai: '' });
+  const [permissionDenied, setPermissionDenied] = useState(false);
   
   const sessionPromiseRef = useRef<Promise<LiveSession> | null>(null);
   const inputAudioContextRef = useRef<AudioContext | null>(null);
@@ -84,6 +85,8 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
   const startCall = useCallback(async (isRetry = false) => {
     if (!mountedRef.current) return;
     setStatus('connecting');
+    setPermissionDenied(false);
+
     if (!isRetry) {
         setTranscript([]);
         setCurrentTranscription({ user: '', ai: '' });
@@ -277,19 +280,22 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
     } catch (error) {
         console.error('Failed to start call:', error);
         setStatus('idle');
-        if (error instanceof Error && error.name === 'NotAllowedError') {
-             alert('Could not access microphone. Please allow microphone permissions and try again.');
-        } else {
-            // Only alert if we haven't already retried to avoid spamming alerts
-            if (retryCountRef.current >= 1) {
-                 alert(`An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`);
-            } else {
-                 // Silent retry for initial failure
-                 retryCountRef.current += 1;
-                 setTimeout(() => startCall(true), 1000);
-                 return;
-            }
+        
+        if (error instanceof Error && (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError')) {
+             setPermissionDenied(true);
+             return;
         }
+
+        // Only alert if we haven't already retried to avoid spamming alerts
+        if (retryCountRef.current >= 1) {
+                alert(`An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`);
+        } else {
+                // Silent retry for initial failure
+                retryCountRef.current += 1;
+                setTimeout(() => startCall(true), 1000);
+                return;
+        }
+        
         onStartupError();
     }
   }, [stopAudioProcessing, language, service, onStartupError, status]);
@@ -317,6 +323,35 @@ const IVRScreen: React.FC<{ onCallEnd: (transcript: TranscriptEntry[], recording
             return <div className="text-sm text-red-500">Error</div>;
     }
   };
+
+  if (permissionDenied) {
+    return (
+        <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+            <div className="bg-red-100 p-6 rounded-full mb-6">
+                <MicIcon className="w-10 h-10 text-red-600" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-3">Microphone Access Required</h3>
+            <p className="text-gray-600 mb-8 max-w-sm mx-auto">
+                Prani Mitra needs access to your microphone to hear your questions. 
+                Please allow microphone access in your browser settings and try again.
+            </p>
+            <div className="flex gap-4">
+                 <button 
+                    onClick={onStartupError}
+                    className="px-6 py-3 rounded-full font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors"
+                >
+                    Cancel
+                </button>
+                <button 
+                    onClick={() => startCall(true)}
+                    className="px-6 py-3 rounded-full font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors shadow-lg"
+                >
+                    Retry Access
+                </button>
+            </div>
+        </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">

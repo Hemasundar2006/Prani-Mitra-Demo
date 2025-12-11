@@ -24,9 +24,30 @@ const LanguageSelection: React.FC<{ onSelect: (lang: string) => void }> = ({ onS
     </div>
 );
 
+const ServiceSelection: React.FC<{ onSelect: (service: string) => void }> = ({ onSelect }) => (
+    <div className="text-center flex flex-col items-center justify-center h-full">
+      <h2 className="text-2xl font-bold text-green-800 mb-2">Select Service</h2>
+      <p className="text-gray-600 mb-6 max-w-md">Please select the topic you need help with.</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-lg px-4">
+        {[
+            { id: 'Farming', label: 'Farming', icon: '🌾' },
+            { id: 'Animal Health', label: 'Animal Health', icon: '🐄' },
+            { id: 'Government Schemes', label: 'Government Schemes', icon: '🏛️' },
+            { id: 'General Queries', label: 'General Queries', icon: '❓' }
+        ].map((s) => (
+             <button key={s.id} onClick={() => onSelect(s.id)} className="bg-white border-2 border-green-100 hover:border-green-600 text-gray-800 hover:text-green-800 font-semibold py-4 px-6 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center space-x-4 text-left group">
+                <span className="text-3xl group-hover:scale-110 transition-transform">{s.icon}</span>
+                <span className="text-lg">{s.label}</span>
+            </button>
+        ))}
+      </div>
+    </div>
+);
+
 
 const ChatFlow: React.FC = () => {
   const [language, setLanguage] = useState<string | null>(null);
+  const [service, setService] = useState<string | null>(null);
   const [initState, setInitState] = useState<InitializationState>('initializing');
   const [chat, setChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -36,24 +57,40 @@ const ChatFlow: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const initializeChat = useCallback(async () => {
-    if (!language) return;
+    if (!language || !service) return;
     setInitState('initializing');
     setError(null);
     setChat(null);
     setMessages([]);
 
     const welcomeMessages: { [key: string]: string } = {
-        'English': 'Hello! How can I help you with your farming questions today?',
-        'Hindi': 'नमस्ते! आज मैं आपकी खेती-किसानी से जुड़े सवालों में कैसे मदद कर सकता हूँ?',
-        'Telugu': 'నమస్కారం! ఈ రోజు మీ వ్యవసాయ ప్రశ్నలతో నేను మీకు ఎలా సహాయపడగలను?',
+        'English': `Hello! I am your Prani Mitra Assistant for ${service}. How can I help you today?`,
+        'Hindi': `नमस्ते! मैं ${service} के लिए आपका प्राणी मित्र सहायक हूँ। आज मैं आपकी कैसे मदद कर सकता हूँ?`,
+        'Telugu': `నమస్కారం! నేను ${service} కోసం మీ ప్రాణి మిత్ర సహాయకుడిని. ఈ రోజు నేను మీకు ఎలా సహాయపడగలను?`,
     };
 
     const knowledgeText = knowledgeBase.map(qa => `Q: ${qa.question}\nA: ${qa.answer}`).join('\n\n');
 
+    let serviceInstruction = "";
+    switch (service) {
+        case 'Farming':
+            serviceInstruction = "The user has explicitly selected 'Farming' services. You must STRICTLY LIMIT your responses to questions about crops, soil, plants, irrigation, fertilizers, weather impact on crops, and pest management for crops. You must answer these questions based primarily on the provided Knowledge Base. DO NOT answer questions about animals, livestock, or veterinary advice. If the user asks about animals, politely inform them in the selected language that you can only answer farming-related questions in this mode.";
+            break;
+        case 'Animal Health':
+            serviceInstruction = "The user has explicitly selected 'Animal Health' services. You must STRICTLY LIMIT your responses to questions about livestock, cattle, poultry, sheep, goats, pigs, animal diseases, animal nutrition, and veterinary advice. You must answer these questions based primarily on the provided Knowledge Base. DO NOT answer questions about growing crops, soil, or plant farming. If the user asks about crops, politely inform them in the selected language that you can only answer animal health questions in this mode.";
+            break;
+        case 'Government Schemes':
+            serviceInstruction = "The user has selected 'Government Schemes'. Focus primarily on explaining government schemes available for farmers. You may use external general knowledge for major Indian schemes if not found in the knowledge base. Do not answer detailed technical farming or veterinary questions unless they relate to a scheme.";
+            break;
+        default:
+            serviceInstruction = "The user has selected 'General Queries'. You may answer questions regarding both Farming and Animal Health based on the provided Knowledge Base.";
+            break;
+    }
+
     const systemInstructions: { [key: string]: string } = {
-        'English': `You are Prani Mitra, a helpful AI assistant for Indian farmers. Your expertise is strictly limited to topics about farming and animal healthcare. You must answer ONLY in English. You MUST answer questions based ONLY on the following information. If the user's question cannot be answered using this information, say that you don't have the information on that topic. If the user ends the conversation, say "Thank you for calling Prani Mitra" and nothing else.\n\n---START OF KNOWLEDGE BASE---\n${knowledgeText}\n---END OF KNOWLEDGE BASE---`,
-        'Hindi': `आप प्राणी मित्र हैं, जो भारतीय किसानों के लिए एक सहायक एआई हैं। आपकी विशेषज्ञता केवल खेती और पशु स्वास्थ्य देखभाल के विषयों तक ही सीमित है। आपको केवल हिंदी में जवाब देना है। आपको केवल निम्नलिखित जानकारी के आधार पर ही सवालों का जवाब देना होगा। यदि उपयोगकर्ता के प्रश्न का उत्तर इस जानकारी का उपयोग करके नहीं दिया जा सकता है, तो कहें कि आपके पास उस विषय पर जानकारी नहीं है। यदि उपयोगकर्ता बातचीत समाप्त करता है, तो केवल "प्राणी मित्र को कॉल करने के लिए धन्यवाद" कहें।\n\n---START OF KNOWLEDGE BASE---\n${knowledgeText}\n---END OF KNOWLEDGE BASE---`,
-        'Telugu': `మీరు ప్రాణి మిత్ర, భారతీయ రైతులకు సహాయపడే ఒక AI సహాయకుడు. మీ నైపుణ్యం వ్యవసాయం మరియు పశు ఆరోగ్య సంరక్షణ అంశాలకు మాత్రమే పరిమితం. మీరు కేవలం తెలుగులో మాత్రమే సమాధానం ఇవ్వాలి. మీరు కేవలం కింది సమాచారం ఆధారంగా మాత్రమే ప్రశ్నలకు సమాధానం ఇవ్వాలి. ఈ సమాచారాన్ని ఉపయోగించి వినియోగదారుడి ప్రశ్నకు సమాధానం ఇవ్వలేకపోతే, ఆ అంశంపై మీ వద్ద సమాచారం లేదని చెప్పండి. వినియోగదారు సంభాషణను ముగించినట్లయితే, "ప్రాణి మిత్రకు కాల్ చేసినందుకు ధన్యవాదాలు" అని మాత్రమే చెప్పండి.\n\n---START OF KNOWLEDGE BASE---\n${knowledgeText}\n---END OF KNOWLEDGE BASE---`,
+        'English': `You are Prani Mitra, a helpful AI assistant for Indian farmers. Your expertise is strictly limited to the selected service: ${service}. You must answer ONLY in English. ${serviceInstruction}\n\nUse the following Knowledge Base. If the answer is not in the Knowledge Base, you may use general agricultural knowledge suitable for India, but ONLY if it falls within the strict scope of ${service}. If the user ends the conversation, say "Thank you for calling Prani Mitra" and nothing else.\n\n---START OF KNOWLEDGE BASE---\n${knowledgeText}\n---END OF KNOWLEDGE BASE---`,
+        'Hindi': `आप प्राणी मित्र हैं, जो भारतीय किसानों के लिए एक सहायक एआई हैं। आपकी विशेषज्ञता चयनित सेवा: ${service} तक सीमित है। आपको केवल हिंदी में जवाब देना है। ${serviceInstruction}\n\nनिम्नलिखित ज्ञान आधार का उपयोग करें। यदि उत्तर ज्ञान आधार में नहीं है, तो आप भारत के लिए उपयुक्त सामान्य कृषि ज्ञान का उपयोग कर सकते हैं, लेकिन केवल तभी जब वह ${service} के सख्त दायरे में आता है। यदि उपयोगकर्ता बातचीत समाप्त करता है, तो केवल "प्राणी मित्र को कॉल करने के लिए धन्यवाद" कहें।\n\n---START OF KNOWLEDGE BASE---\n${knowledgeText}\n---END OF KNOWLEDGE BASE---`,
+        'Telugu': `మీరు ప్రాణి మిత్ర, భారతీయ రైతులకు సహాయపడే ఒక AI సహాయకుడు. మీ నైపుణ్యం ఎంచుకున్న సేవ: ${service} కు ఖచ్చితంగా పరిమితం. మీరు కేవలం తెలుగులో మాత్రమే సమాధానం ఇవ్వాలి. ${serviceInstruction}\n\nదిగువ ఉన్న నాలెడ్జ్ బేస్ ఉపయోగించండి. సమాధానం నాలెడ్జ్ బేస్‌లో లేకపోతే, మీరు భారతదేశానికి సరిపోయే సాధారణ వ్యవసాయ జ్ఞానాన్ని ఉపయోగించవచ్చు, కానీ అది ${service} యొక్క పరిధిలో ఉంటే మాత్రమే. వినియోగదారు సంభాషణను ముగించినట్లయితే, "ప్రాణి మిత్రకు కాల్ చేసినందుకు ధన్యవాదాలు" అని మాత్రమే చెప్పండి.\n\n---START OF KNOWLEDGE BASE---\n${knowledgeText}\n---END OF KNOWLEDGE BASE---`,
     }
 
     try {
@@ -73,13 +110,13 @@ const ChatFlow: React.FC = () => {
       setError(`Failed to initialize chat. This might be due to an invalid API key or a network issue. Error: ${errorMessage}`);
       setInitState('error');
     }
-  }, [language]);
+  }, [language, service]);
 
   useEffect(() => {
-    if (language) {
+    if (language && service) {
       initializeChat();
     }
-  }, [language, initializeChat]);
+  }, [language, service, initializeChat]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -112,8 +149,29 @@ const ChatFlow: React.FC = () => {
     }
   };
 
+  const resetChat = () => {
+    setLanguage(null);
+    setService(null);
+    setMessages([]);
+    setChat(null);
+    setInitState('initializing');
+  };
+
   if (!language) {
     return <LanguageSelection onSelect={setLanguage} />;
+  }
+
+  if (!service) {
+      return (
+          <div className="h-full flex flex-col">
+               <div className="p-4">
+                   <button onClick={() => setLanguage(null)} className="text-sm text-green-600 hover:underline mb-2">&larr; Back to Language</button>
+               </div>
+               <div className="flex-grow">
+                  <ServiceSelection onSelect={setService} />
+               </div>
+          </div>
+      )
   }
   
   if (initState === 'initializing') {
@@ -137,10 +195,10 @@ const ChatFlow: React.FC = () => {
               Retry
           </button>
            <button
-              onClick={() => setLanguage(null)}
+              onClick={resetChat}
               className="mt-4 text-sm text-gray-500 hover:underline"
           >
-              Change Language
+              Start Over
           </button>
       </div>
     );
@@ -148,6 +206,10 @@ const ChatFlow: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full">
+       <div className="bg-white border-b border-gray-200 px-4 py-2 flex justify-between items-center text-xs text-gray-500">
+            <span>{language} | {service}</span>
+            <button onClick={resetChat} className="hover:text-green-600">Change Settings</button>
+       </div>
       <div className="flex-grow overflow-y-auto p-4 space-y-4">
         {messages.map((msg, index) => (
           <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
